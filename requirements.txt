@@ -1,2 +1,2 @@
-# run sparql queries
-SPARQLWrapper
+pandas
+rdflib

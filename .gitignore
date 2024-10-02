@@ -1,6 +1,8 @@
 # passwords
 config.ini
 dataset/*
+data/*
+logs/*
 
 .DS_Store
 .idea/

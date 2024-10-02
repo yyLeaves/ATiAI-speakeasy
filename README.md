@@ -5,12 +5,22 @@ Speakeasy
 pip install speakeasy-python-client-library/dist/speakeasypy-1.0.0-py3-none-any.whl
 ```
 
-Dataset
+Data
 ```bash
-mkdir dataset
+mkdir dataset data logs
 cd dataset
 wget -r -np -R "index.html*" https://files.ifi.uzh.ch/ddis/teaching/ATAI2024/dataset/
+unzip ddis-movie-graph.nt.zip
+mv 14_graph.nt ../data/14_graph.nt
+``` 
+
+Run
+```bash
+python demo_bot.py
 ```
+
+## Issues
+1. https://lms.uzh.ch/auth/RepositoryEntry/17583866519/CourseNode/85421310450657/Message/17608802433 (3rd SPARQL Query Gets Cut Off)
 
 ## Project 
 
