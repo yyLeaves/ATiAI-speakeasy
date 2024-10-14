@@ -38,7 +38,8 @@ class Agent:
             for room in rooms:
                 if not room.initiated:
                     # send a welcome message if room is not initiated
-                    room.post_messages(f'Hello from {os.getcwd()}') # for testing
+                    # room.post_messages(f'Hello from {os.getcwd()}') # for testing
+                    logger.info(f"Chatroom {room.room_id} initiated from {os.getcwd()}.")
                     room.post_messages(f'Hello! This is a welcome message from {room.my_alias}.')
                     room.initiated = True
                 # Retrieve messages from this chat room.
