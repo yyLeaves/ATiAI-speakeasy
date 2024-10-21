@@ -7,12 +7,14 @@ pip install speakeasy-python-client-library/dist/speakeasypy-1.0.0-py3-none-any.
 
 Data
 ```bash
-mkdir dataset data logs
+mkdir dataset, data, logs
 cd dataset
 wget -r -np -R "index.html*" https://files.ifi.uzh.ch/ddis/teaching/ATAI2024/dataset/
 unzip ddis-movie-graph.nt.zip
 mv 14_graph.nt ../data/14_graph.nt
 ``` 
+
+**1st Intermediate Evaluation**
 
 Run
 ```bash
@@ -106,3 +108,48 @@ Evaluation event date: 14.10.2024
 Requirements: 
 
 Your active participation. 
+
+
+### 2nd Intermediate Evaluation:  
+Description:  In the 2nd evaluation, your agent needs to be able to answer factual questions and embedding questions. You will receive real-world natural language questions. Your agent needs to interpret the given questions, transform them into executable SPARQL queries (just as one possible solution), and fetch the correct answers from the provided knowledge graph.
+
+Example queries/questions: 
+```
+Who is the director of Star Wars: Episode VI - Return of the Jedi? 
+
+I think it is Richard Marquand. 
+```
+```
+Who is the screenwriter of The Masked Gang: Cyprus? 
+
+The answer suggested by embeddings: Cengiz Küçükayvaz. 
+```
+```
+When was "The Godfather" released? 
+
+It was released in 1972. 
+```
+
+Please note that you may consider a given question as
+
+1) a factual question by providing the factual answer from the knowledge graph,
+
+2) an embedding question by providing the embedding computation-based answer,
+
+3) or both by providing both answers.
+
+To make sure that other people can give accurate ratings and not misunderstand your embedding answer as a factual answer (or vice versa), please clearly state what kind of answer is given in your response, e.g., the second question above. Also, we recommend using "(Embedding Answer)" to mark each embedding answer.
+
+Report Submission deadline: 28.10.2024 (23:59 Zurich time)
+
+Student Presentation: Multiple teams will be selected to give a 10-minute presentation (including QA). We will inform the selected teams 2 days before the event.
+
+Evaluation event date: 04.11.2024 
+
+Requirements: 
+
+For the 2nd intermediate evaluation, you need to: 
+
+Submit the latest version of your code in a compressed file. The name of the file should be: ATAI_Eval2_[bot_name].zip, where [bot_name] is the name of your team's bot.
+Submit a report using the provided template (c.f. Project - Overview).
+Actively participate in the event.  
