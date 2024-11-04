@@ -1,2 +1,6 @@
 pandas
 rdflib
+rapidfuzz
+torch
+replicate
+spark-nlp
