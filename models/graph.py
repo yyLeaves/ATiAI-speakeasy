@@ -2,6 +2,7 @@ import re
 import numpy as np
 import pandas as pd
 from rdflib import Namespace, Graph, RDFS
+from models.recommend_logic import process_recommendation
 
 import sys
 sys.path.append('D:/Project/ATiAI-speakeasy/')
@@ -42,6 +43,7 @@ class QueryEngine():
         print("Query Engine initialized.")
 
     def answer(self, query: str):
+
         self.query = query
         print(f"Trying to answer: {query}")
         entities = self.get_entities(query)
