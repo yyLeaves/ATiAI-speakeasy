@@ -71,12 +71,40 @@ class GraphEmbedding:
             return None
         distances = pairwise_distances(lhs.reshape(1, -1), self.entity_emb).reshape(-1).argsort()
         most_likely_results_df = pd.DataFrame([
-            (self.id2ent[idx][len(WD):], self.ent2lbl[self.id2ent[idx]], distances[idx], rank+1)
+            (self.id2ent[idx][len(WD):], 
+             [self.id2ent[idx]], 
+             distances[idx], 
+             rank+1)
             for rank, idx in enumerate(distances[:topn])],
             columns=('Entity', 'Label', 'Score', 'Rank'))
         most_likely_results = most_likely_results_df.to_dict('records')
         print(f"Most likely results: {most_likely_results}")
         return [result['Label'] for result in most_likely_results]
+    
+    def get_entity_embedding_single(self, entity):
+        try:
+            ent_emb = self.entity_emb[self.ent2id[entity]]
+            return ent_emb
+        except KeyError:
+            ent_emb = np.zeros(256)
+        return None
+    
+    def get_average_embedding(self, entity_embeddings):
+        average_emb = np.mean(entity_embeddings, axis=0)
+        return average_emb
+    
+    def get_most_similar(self, ent_emb, topn):
+        distances = pairwise_distances(ent_emb.reshape(1, -1), self.entity_emb).reshape(-1).argsort()
+        most_similar_results_df = pd.DataFrame([
+            (self.id2ent[idx][len(WD):], 
+             self.ent2lbl[self.id2ent[idx]], 
+             distances[idx], 
+             rank+1)
+            for rank, idx in enumerate(distances[:topn]) if self.id2ent[idx] in self.ent2lbl],
+            columns=('Entity', 'Label', 'Score', 'Rank'))
+        most_similar_results = most_similar_results_df.to_dict('records')
+        # print(f"Most similar results: {most_similar_results}")
+        return most_similar_results
 
 
 if __name__ == "__main__":

@@ -6,8 +6,8 @@ from rdflib import Namespace, Graph, RDFS
 import sys
 sys.path.append('D:/Project/ATiAI-speakeasy/')
 
-from models.entity import EntityProcessor, MovieEntityProcessor
-from models.postprocess import PostProcessor
+# from models.entity import EntityProcessor, MovieEntityProcessor
+from models.postprocess import MovieNameProcessor
 from models.relation import RelationProcessor
 from models.data_config import QUERY_PREFIX
 from models.embedding import GraphEmbedding
@@ -35,16 +35,15 @@ class QueryEngine():
 
     def __init__(self, graph):
         self.graph = graph
-        # self.graph.parse('D:/Project/ATiAI-speakeasy/data/14_graph.nt', format='turtle')
         self.embedding = GraphEmbedding(graph=self.graph)
-        self.ep = EntityProcessor()
-        self.mp = MovieEntityProcessor()
+        # self.ep = EntityProcessor() # TODO: disabled spark nlp    
+        # self.mp = MovieEntityProcessor() # TODO: disabled spark nlp
         print("Query Engine initialized.")
 
     def answer(self, query: str):
         self.query = query
         print(f"Trying to answer: {query}")
-        entities = self.get_entities(query)
+        entities = self.get_list_movies(query)
         print(f"Gathered entities: {entities}")
         relation, pid = self.get_relations(entities)
         print(f"Gathered relation: {relation}-{pid}")   
@@ -138,31 +137,48 @@ class QueryEngine():
         #     return None
         # return results
     
-    def _format_answer(self, answer):
+    def _format_answer(self, answer: list):
         answer = ', '.join(answer)
-        # answer = pd.DataFrame(answer,columns=answer.vars)
-        # lens = answer.shape[0]
-        # items = answer.iloc[:,0].tolist()
-        # if lens > 1:
-        #     last_item = items.pop()
-        #     answer = ', '.join(items) + ' and ' + last_item
-        # elif items:
-        #         answer = items[0]
-        # else:
-        #     answer = None
         return answer
 
+    def get_movies(self, query: str):
+        movies = self.get_list_movies(query)
+        print(f"get movie entities: {movies}")
+        return movies
 
-    def get_entities(self, query: str):
-        self.ep.process(query)
-        self.mp.process(query)
-        movie_entities = self.mp.entities
-        all_entities = self.ep.entities
-        print(f"get movie entities: {movie_entities} and all entities: {all_entities}")
-        pp = PostProcessor(query, movie_entities, all_entities)
-        mapping_entities = pp.process()
 
-        return mapping_entities
+    def get_list_movies(self, query: str):
+        # TODO: change interface here
+        """Return a list of movie names extracted from the query"""
+        import anthropic
+        print("EXtracting movie entities")
+
+
+        # TODO: for development purposes only
+        api_key = "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"
+
+        client = anthropic.Anthropic(api_key=api_key)
+
+        message = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=1000,
+            temperature=0,
+            system="You are an Movie NER api, extract movie name entities from the text and only return them as a list",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": f'Example input: Given that I like The Lion King, Pocahontas, and The Beauty and the Beast, can you recommend some movies?\nExample return: ["The Lion King", "Pocahontas", "The Beauty and the Beast"]\n\nExample input: Recommend movies like Nightmare on Elm Street, Friday the 13th, and Halloween.\nExample return: ["Nightmare on Elm Street", "Friday the 13th", "Halloween"]\n\n{query}'
+                        }
+                    ]
+                }
+            ]
+        )
+        movies = eval(message.content[0].text)
+        assert isinstance(movies, list) and all(isinstance(m, str) for m in movies)
+        return movies
 
     def get_relations(self, entities):
         rp = RelationProcessor(self.query, entities)

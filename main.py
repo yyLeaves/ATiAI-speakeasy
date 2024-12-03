@@ -1,0 +1,166 @@
+from speakeasypy import Speakeasy, Chatroom
+from typing import List
+import time, os, random
+import configparser
+from rdflib import Graph
+from utils import logger
+from models.embedding import GraphEmbedding
+from models.recommender import RecommendEngine
+from models.intention import IntentionDetection
+from models.postprocess import MovieNameProcessor, EntityNameProcessor
+from models.graph import QueryEngine
+
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+username = config['credentials']['username']
+password = config['credentials']['password']
+
+bot_name = config['credentials']['bot_name']
+bot_pass = config['credentials']['bot_pass']
+
+DEFAULT_HOST_URL = 'https://speakeasy.ifi.uzh.ch'
+
+listen_freq = 2
+
+
+class Agent:
+    def __init__(self, username, password):
+
+        logger.info("Initializing knowledge graph...")
+        graph = Graph().parse('D:/Project/ATiAI-speakeasy/data/14_graph.nt', format='turtle')
+        self.graph = graph
+        logger.info("Knowledge graph initialized.")
+
+        self.int_det = IntentionDetection()
+        self.mnp = MovieNameProcessor()
+        self.enp = EntityNameProcessor()
+        self.recommender = RecommendEngine(graph=self.graph)
+
+        
+        self.query_engine = QueryEngine(graph=graph)
+        self.embedding = GraphEmbedding(graph=graph)
+
+        logger.info("Agent initialized.")
+        
+        self.username = username
+        self.speakeasy = Speakeasy(host=DEFAULT_HOST_URL, username=username, password=password)
+        self.speakeasy.login()  # This framework will help you log out automatically when the program terminates.
+        logger.info("Agent logged in.")
+        self.history = {}
+
+    def listen(self):
+        while True:
+            # only check active chatrooms (i.e., remaining_time > 0) if active=True.
+            rooms: List[Chatroom] = self.speakeasy.get_rooms(active=True)
+            for room in rooms:
+                if not room.initiated:
+                    # send a welcome message if room is not initiated
+                    logger.info(f"Chatroom {room.room_id} initiated from {os.getcwd()}.")
+                    room.post_messages(f'Ciao! | Bonjour! | Hola! | Hallo! | Salut! '
+                                       f'This is your personal movie recommender. I give one recommendation suggestion at a time.')
+                    room.initiated = True
+
+                for message in room.get_messages(only_partner=True, only_new=True):
+                    logger.info(
+                        f"\t- Chatroom {room.room_id} "
+                        f"- new message #{message.ordinal}: '{message.message}' "
+                        f"- {self.get_time()}")
+
+                    # try:
+                    if message.message.strip() in self.history:
+                        response = self.history[message.message.strip()]
+                        logger.info(f"Query result: {response}")
+                        room.post_messages(f"{response}.")
+                        room.mark_as_processed(message)
+                        continue
+                    else:
+                        intention = self.int_det.detect_intention(message.message)
+                        if intention == 'recommend':
+                            logger.info(f"Detected intention: {intention}")
+
+                            movie_names = self.query_engine.get_list_movies(message.message) # list of movie names extracted using NER
+                            movie_matches = self.mnp.process(movie_names)
+                            movie_matches = [movie for movie in movie_matches if movie['mapping'] is not False]
+                            logger.info(f"Extracted Movie Names: {movie_names}")
+                            
+                            if len(movie_matches) == 0:
+                                alternative_entities = self.query_engine.get_entities(message.message) # TODO: implementation
+                                entity_matches = self.enp.process(alternative_entities)
+                                # TODO: if movies is empty, search for other entities and recommend based on it
+                                logger.info(f"Entity Matches: {entity_matches}")
+                                feature_rec = self.recommender.recommend_by_entity(entity_matches)
+                                logger.info(f"Feature Recommendation: {feature_rec}")
+                                response = ','.join(feature_rec)
+
+                            elif len(movie_matches) == 1:
+                                # recommendation based on genre, ...
+                                ...
+                            else:
+                                movie_matches = self.mnp.process(movie_names)
+                                movie_matches = [movie for movie in movie_matches if movie['mapping'] is not False]
+
+                                logger.info(f"Movie Matches: {movie_matches}")
+                                feature_rec = self.recommender.recommend_by_movie_feature(movie_matches)
+                                logger.info(f"Feature Recommendation: {feature_rec}")
+
+                                knn_rec = self.recommender.recommend_by_knn(movie_matches)
+                                logger.info(f"KNN Recommendation: {knn_rec}")
+
+                                intersection = set(feature_rec).intersection(set(knn_rec))
+                                rec_movies = []
+                                if len(intersection) > 0:
+                                    rec_movies += list(intersection)[:3]
+                                rec_movies += knn_rec[:5] + feature_rec[:5]
+                                rec_movies = list(set(rec_movies))
+                                random.shuffle(rec_movies)
+                                print(f"Recommendation: {rec_movies}")
+                                rec_movie_names = [self.recommender.id2movie[movie] for movie in rec_movies]
+                                logger.info(f"Recommendation: {rec_movie_names}")
+
+                                response = ', '.join(rec_movie_names)
+                                ...
+                            
+                            print(f"Response: {response}")
+                        elif intention == 'multimedia':
+                            response = "MULTIMEDIA"
+                        else:
+                            """Try to answer in the order of
+                            1. graph search ->
+                            2. crowdsource ->
+                            3. embeddings ->
+                            """
+                        # response = f"Movies: {movies}"
+                        logger.info(f"Query result: {response}")
+                        self.history[message.message.strip()] = response
+                        room.post_messages(f"{response}.")
+                        room.mark_as_processed(message)
+                    # except Exception as e:
+                    #     print(f"Error processing query: {e}")
+                    #     logger.error(f"Error processing query: {e}")
+                    #     room.post_messages(f"Sorry, your query could not be processed. Please input the correct query.")
+                    # Mark the message as processed, so it will be filtered out when retrieving new messages.
+                    room.mark_as_processed(message)
+
+                # Retrieve reactions from this chat room.
+                # If only_new=True, it filters out reactions that have already been marked as processed.
+                for reaction in room.get_reactions(only_new=True):
+                    logger.info(
+                        f"\t- Chatroom {room.room_id} "
+                        f"- new reaction #{reaction.message_ordinal}: '{reaction.type}' "
+                        f"- {self.get_time()}")
+
+                    # Implement your agent here #
+                    room.post_messages(f"Received your reaction: '{reaction.type}' ")
+                    room.mark_as_processed(reaction)
+
+            time.sleep(listen_freq)
+
+    @staticmethod
+    def get_time():
+        return time.strftime("%H:%M:%S, %d-%m-%Y", time.localtime())
+
+
+if __name__ == '__main__':
+    demo_bot = Agent(bot_name, bot_pass)
+    demo_bot.listen()
