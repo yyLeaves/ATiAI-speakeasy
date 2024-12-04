@@ -71,10 +71,8 @@ class RelationProcessor:
 
     def __init__(self, query, entities):
         self.query = query
-        self.list_entities = [e['entity'] for e in entities]
+        # self.list_entities = [e['entity'] for e in entities]
         self.df_rel_extended_embed = pd.read_pickle("D:/Project/ATiAI-speakeasy/data/df_rel_extend_embed.pkl")
-        # self.relation = self.extract_relation(query)
-        # self.pid = self.mapping(self.relation)
 
     def parse(self):
         relation = self.extract_relation(self.query)
@@ -82,7 +80,7 @@ class RelationProcessor:
         return relation, pid # check not None
 
     def extract_relation(self, q):
-        cleaned_text = re.compile(r'\b(?:' + '|'.join(map(re.escape, self.list_entities)) + r')\b', re.IGNORECASE).sub("", q)
+        cleaned_text = re.compile(r'\b(?:' + '|'.join(map(re.escape, self.query)) + r')\b', re.IGNORECASE).sub("", q)
         for pat, rep in [(PAT_EXTRACT, "")]:
             cleaned_text = re.sub(pat, rep, cleaned_text, flags=re.IGNORECASE)
             relation = cleaned_text.strip().replace('"', '')
@@ -123,15 +121,6 @@ class RelationProcessor:
             
 
 def main():
-    # device = 'cpu'
-    # model_name_or_path = EMBEDDING_MODEL
-    # text2vec_embedding = Text2VecEmbedding(model_name_or_path, device)
-    # df_rel_extended = pd.read_pickle("D:/Project/ATiAI-speakeasy/data/df_rel_extend.pkl")
-    # texts = df_rel_extended['label'].tolist()
-    # embeddings = text2vec_embedding.embed(texts)
-    # df_rel_extended['embedding'] = embeddings
-    # with open("D:/Project/ATiAI-speakeasy/data/df_rel_extend_embed.pkl", "wb") as f:
-    #     df_rel_extended.to_pickle(f)
 
     rp = RelationProcessor("Who directs Harry Potter?", [{'entity': 'Harry Potter', 'ent_start': 21, 'ent_end': 32, 'ent_type': 'TITLE', 'confidence': '0.96424997', 'mapping': {'uri': 'http://www.wikidata.org/entity/Q3244512', 'label': 'Harry Potter'}}])
     rp.mapping("directs")
