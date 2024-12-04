@@ -186,27 +186,3 @@ class QueryEngine():
         return relation, pid
     
 
-def get_restrictions(q: str):
-    DESC = False
-    AESC = False
-    desc_pattern = r"(?:top|best|highest|most|good|lowest|worse|bad|bottom|least)?\s*(\d+|one|two|three|four|five)\s*(?:good|best|highest|most|top|lowest|worse|bad|bottom|least)?"
-    matches = re.findall(desc_pattern, q, re.IGNORECASE)
-    flag = False
-    for match in matches:
-        number = matches[0] if matches[0] else 3 # TODO: default number
-        if number in ["one", "two", "three", "four", "five"]:
-            number = ["one", "two", "three", "four", "five"].index(number) + 1
-        if re.findall(r"top|best|highest|most|good", q, re.IGNORECASE):
-            order = "DESC"
-            flag = True
-        elif re.findall(r"lowest|worse|bad|bottom|least", q, re.IGNORECASE):
-            order = "ASC"
-            flag = True
-        else:
-            order = None
-    return {
-        "flag": flag,
-        "number": number,
-        "order": order
-    }
-

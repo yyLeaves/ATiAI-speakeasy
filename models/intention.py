@@ -15,10 +15,9 @@ class IntentionDetection:
     def _detect_multimedia(self, query: str):
         multimedia_patterns = [
             # Direct image requests
-            r'(show|display|give|find|demonstrate|get|describe|see)\s*(a)?\s*(picture|photo|image|look|depiction|representation|face|portrait|headshot|appearance|visual)\s*(of)?',
-            r'visual\s*(representation|depiction)',
+            r'(show|display|give|find|demonstrate|get|describe|see)*(a)?\s*(picture|photo|image|look|depiction|representation|face|portrait|headshot|appearance|visual|like)*',
             r'how\s*appear',
-            r'what\s*look\s*like',
+            r'(what|how)*(like|look|appear|seem|resemble|be|show|display|depict|represent|portray|picture|photo|image|visual|face|portrait|headshot|appearance|visual|like)*',
         ]
 
         return any(re.search(pattern, query) for pattern in multimedia_patterns)

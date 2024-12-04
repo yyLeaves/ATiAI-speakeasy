@@ -9,6 +9,7 @@ from models.recommender import RecommendEngine
 from models.intention import IntentionDetection
 from models.postprocess import MovieNameProcessor, EntityNameProcessor
 from models.graph import QueryEngine
+from models.multimedia import MultimediaModel
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -36,7 +37,7 @@ class Agent:
         self.mnp = MovieNameProcessor()
         self.enp = EntityNameProcessor()
         self.recommender = RecommendEngine(graph=self.graph)
-
+        self.mmm = MultimediaModel()
         
         self.query_engine = QueryEngine(graph=graph)
         self.embedding = GraphEmbedding(graph=graph)
@@ -74,6 +75,7 @@ class Agent:
                         room.post_messages(f"{response}.")
                         room.mark_as_processed(message)
                         continue
+
                     else:
                         intention = self.int_det.detect_intention(message.message)
                         if intention == 'recommend':
@@ -85,17 +87,19 @@ class Agent:
                             logger.info(f"Extracted Movie Names: {movie_names}")
                             
                             if len(movie_matches) == 0:
+                                # Actor name, director name, genre, etc.
                                 alternative_entities = self.query_engine.get_entities(message.message) # TODO: implementation
-                                entity_matches = self.enp.process(alternative_entities)
+                                ent_matches = self.enp.process(alternative_entities)
+                                ent_matches = [entity for entity in ent_matches if entity['mapping'] is not False]
                                 # TODO: if movies is empty, search for other entities and recommend based on it
-                                logger.info(f"Entity Matches: {entity_matches}")
-                                feature_rec = self.recommender.recommend_by_entity(entity_matches)
+                                logger.info(f"Entity Matches: {ent_matches}")
+                                feature_rec = self.recommender.recommend_by_entity(ent_matches)
                                 logger.info(f"Feature Recommendation: {feature_rec}")
                                 response = ','.join(feature_rec)
 
-                            elif len(movie_matches) == 1:
-                                # recommendation based on genre, ...
-                                ...
+                            # elif len(movie_matches) == 1: # TODO: strategy for single movie
+                            #     # recommendation based on genre, ...
+                            #     ...
                             else:
                                 movie_matches = self.mnp.process(movie_names)
                                 movie_matches = [movie for movie in movie_matches if movie['mapping'] is not False]
@@ -118,13 +122,27 @@ class Agent:
                                 rec_movie_names = [self.recommender.id2movie[movie] for movie in rec_movies]
                                 logger.info(f"Recommendation: {rec_movie_names}")
 
-                                response = ', '.join(rec_movie_names)
-                                ...
+                                response = self.recommender.prepare_response(rec_movie_names)
                             
                             print(f"Response: {response}")
+
+
                         elif intention == 'multimedia':
-                            response = "MULTIMEDIA"
+                            logger.info(f"Detected intention: {intention}")
+                            ent_names = self.mmm.extract_name(message.message) # TODO: extract movie/actor name
+                            ent_matches = self.enp.process(ent_names)
+                            ent_matches = [entity for entity in ent_matches if entity['mapping'] is not False]
+                            logger.info(f"Entity Matches: {ent_names, ent_matches}")
+
+                            r = self.mmm.get_imbd_ids(ent_matches)
+                            imdb_person = r['person']
+                            imdb_movie = r['movie']
+                            logger.info(f"IMDB IDs: {imdb_person, imdb_movie}")
+                            image = self.mmm.get_image(imdb_person, imdb_movie)
+                            response = self.mmm.prepare_response(imdb_person, imdb_movie, image)
+                            
                         else:
+                            response = "Not implemented yet."
                             """Try to answer in the order of
                             1. graph search ->
                             2. crowdsource ->
