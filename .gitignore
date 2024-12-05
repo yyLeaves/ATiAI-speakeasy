@@ -3,6 +3,8 @@ config.ini
 dataset/*
 data/*
 logs/*
+Llama-3.2-1B-Instruct/
+Llama-3.2-3B-Instruct/
 
 .DS_Store
 .idea/
