@@ -10,9 +10,9 @@ class RecommendEngine():
     def __init__(self, graph):
         self.embedding_model = GraphEmbedding(graph=graph)
         self.graph = graph
-        self.df_movie_spo = pd.read_pickle("D:/Project/ATiAI-speakeasy/data/df_movie_spo.pkl")
-        self.df_movie_emb = pd.read_pickle("D:/Project/ATiAI-speakeasy/data/df_movie_emb.pkl")
-        df_movie = pd.read_pickle("D:/Project/ATiAI-speakeasy/data/df_movie.pkl")
+        self.df_movie_spo = pd.read_pickle("data/df_movie_spo.pkl")
+        self.df_movie_emb = pd.read_pickle("data/df_movie_emb.pkl")
+        df_movie = pd.read_pickle("data/df_movie.pkl")
         df_movie['id'] = df_movie['uri'].apply(lambda x: x.split('/')[-1])
         self.id2movie = {row['id']: str(row['label']) for idx, row in df_movie.iterrows()}
 

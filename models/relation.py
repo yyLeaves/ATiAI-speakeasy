@@ -72,7 +72,7 @@ class RelationProcessor:
     def __init__(self, query, entities):
         self.query = query
         # self.list_entities = [e['entity'] for e in entities]
-        self.df_rel_extended_embed = pd.read_pickle("D:/Project/ATiAI-speakeasy/data/df_rel_extend_embed.pkl")
+        self.df_rel_extended_embed = pd.read_pickle("data/df_rel_extend_embed.pkl")
 
     def parse(self):
         relation = self.extract_relation(self.query)

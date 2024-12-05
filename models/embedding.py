@@ -20,17 +20,17 @@ class GraphEmbedding:
         self.ent2lbl = {ent: str(lbl) for ent, lbl in self.graph.subject_objects(RDFS.label)}
         self.lbl2ent = {lbl: ent for ent, lbl in self.ent2lbl.items()}
 
-        self.entity_emb = np.load('D:/Project/ATiAI-speakeasy/data/ddis-graph-embeddings/entity_embeds.npy')
-        self.relation_emb = np.load('D:/Project/ATiAI-speakeasy/data/ddis-graph-embeddings/relation_embeds.npy')
+        self.entity_emb = np.load('data/ddis-graph-embeddings/entity_embeds.npy')
+        self.relation_emb = np.load('data/ddis-graph-embeddings/relation_embeds.npy')
 
-        with open('D:/Project/ATiAI-speakeasy/data/ddis-graph-embeddings/entity_ids.del', 'r') as ifile:
+        with open('data/ddis-graph-embeddings/entity_ids.del', 'r') as ifile:
             self.ent2id = {rdflib.term.URIRef(ent): int(idx) for idx, ent in csv.reader(ifile, delimiter='\t')}
             self.id2ent = {v: k for k, v in self.ent2id.items()}
-        with open('D:/Project/ATiAI-speakeasy/data/ddis-graph-embeddings/relation_ids.del', 'r') as ifile:
+        with open('data/ddis-graph-embeddings/relation_ids.del', 'r') as ifile:
             self.rel2id = {rdflib.term.URIRef(rel): int(idx) for idx, rel in csv.reader(ifile, delimiter='\t')}
             self.id2rel = {v: k for k, v in self.rel2id.items()}
 
-        df_rel_extended = pd.read_pickle("D:/Project/ATiAI-speakeasy/data/df_rel_extend.pkl")
+        df_rel_extended = pd.read_pickle("data/df_rel_extend.pkl")
         # self.lbl2rel = {row['relation']: row['relation_label'] for idx, row in df_rel_extended.iterrows()}
         # self.rel2lbl = {row['relation_label']: row['relation'] for idx, row in df_rel_extended.iterrows()}
 

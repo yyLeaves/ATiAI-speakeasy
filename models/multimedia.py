@@ -5,14 +5,14 @@ class MultimediaModel:
 
     def __init__(self):
         """"""
-        self.df_imdb = pd.read_pickle("D:/Project/ATiAI-speakeasy/data/df_spo_imdb.pkl")
+        self.df_imdb = pd.read_pickle("data/df_spo_imdb.pkl")
         self.imdb2id = dict(zip(self.df_imdb['o'], self.df_imdb['sid']))
-        self.df_images = pd.read_pickle("D:/Project/ATiAI-speakeasy/data/df_images.pkl")
-        self.df_person = pd.read_pickle("D:/Project/ATiAI-speakeasy/data/df_person.pkl")
+        self.df_images = pd.read_pickle("data/df_images.pkl")
+        self.df_person = pd.read_pickle("data/df_person.pkl")
         self.df_person['id'] = self.df_person['uri'].apply(lambda x: x.split('/')[-1].strip('>'))
         self.person2movie = dict(zip(self.df_person['id'], self.df_person['label']))
         self.list_person = self.df_person['id'].values
-        self.df_movie = pd.read_pickle("D:/Project/ATiAI-speakeasy/data/df_movie.pkl")
+        self.df_movie = pd.read_pickle("data/df_movie.pkl")
         self.df_movie['id'] = self.df_movie['uri'].apply(lambda x: x.split('/')[-1].strip('>'))
         self.id2movie = dict(zip(self.df_movie['id'], self.df_movie['label']))
         self.list_movie = self.df_movie['id'].values

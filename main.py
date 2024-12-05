@@ -30,7 +30,7 @@ class Agent:
     def __init__(self, username, password):
 
         logger.info("Initializing knowledge graph...")
-        graph = Graph().parse('D:/Project/ATiAI-speakeasy/data/14_graph.nt', format='turtle')
+        graph = Graph().parse('data/14_graph.nt', format='turtle')
         self.graph = graph
         logger.info("Knowledge graph initialized.")
 

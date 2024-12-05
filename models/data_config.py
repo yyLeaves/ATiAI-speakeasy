@@ -5,11 +5,11 @@ MOVIE_NER_TYPES = [
                    'CHARACTER', 'SONG', 'ACTOR', 'TITLE', 'YEAR', 'RELATIONSHIP']
 FUZZ_THRESHOLD = 95
 FUZZ_THRESHOLD_LOW = 80
-DATA_PATH = "D:/Project/ATiAI-speakeasy/data"
+DATA_PATH = "data"
 
 PAT_EXTRACT = r"\b(What|When|Where|Why|How|How many|Tell me|Tell me about|Show me|Show me about|show|give|Give me|Let me know|Do you know|Who|Which|is|are|was|were|will|would|could|can|should|does|do|did|the|a|an|in|on|at|for|with|by|to|'s|'re|be|being|been)\b|\.|\?"
 
-EMBEDDING_MODEL = "D:/Project/ATiAI-speakeasy/data/models/all-MiniLM-L12-v2"
+EMBEDDING_MODEL = "data/models/all-MiniLM-L12-v2"
 
 from rdflib import Namespace
 WD = Namespace('http://www.wikidata.org/entity/')

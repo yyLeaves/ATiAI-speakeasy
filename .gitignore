@@ -3,6 +3,9 @@ config.ini
 dataset/*
 data/*
 logs/*
+Llama-3.2-1B-Instruct/
+Llama-3.2-3B-Instruct/
+ner_models_files/fine_tuned_bert_model/
 
 .DS_Store
 

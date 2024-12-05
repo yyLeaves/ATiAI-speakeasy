@@ -4,7 +4,7 @@ import pandas as pd
 from rdflib import Namespace, Graph, RDFS
 
 import sys
-sys.path.append('D:/Project/ATiAI-speakeasy/')
+sys.path.append('')
 
 from models.postprocess import MovieNameProcessor
 from models.relation import RelationProcessor
@@ -71,7 +71,7 @@ class QueryEngine():
         print(f"Translating: {res}")
         if "entity/Q" in res:
             ent_id = res.split('/')[-1].strip('>')
-            df = pd.read_pickle("D:/Project/ATiAI-speakeasy/data/df_ent.pkl")
+            df = pd.read_pickle("data/df_ent.pkl")
             lbl = df[df['uri'].str.contains(ent_id)].iloc[0]['label']
             print(f"Translated: {lbl}")
             return lbl
@@ -85,7 +85,7 @@ class QueryEngine():
         ent_ids = [str(e['mapping']['uri']).split('/')[-1] for e in entities if e['mapping'] is not False]
 
         ent_id = ent_ids[0]
-        df = pd.read_csv('D:/Project/ATiAI-speakeasy/dataset/14_graph.tsv', sep='\t', header=None)
+        df = pd.read_csv('dataset/14_graph.tsv', sep='\t', header=None)
         res = df[df[1].str.contains(pid) & df[0].str.contains(ent_id)][2].to_list()
 
         print(f"Results: {res}")
