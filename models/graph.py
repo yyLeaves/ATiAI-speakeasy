@@ -12,7 +12,6 @@ from models.data_config import QUERY_PREFIX
 from models.embedding import GraphEmbedding
 
 
-
 ANSWER_TEMPLATE = [
     f"[graph] From my knowledge, the answer is <answer>",
     f"[graph] I think the answer to your question is <answer>",
@@ -29,12 +28,12 @@ ANSWER_TEMPLATE_EMBEDDING = [
     f"[embedding] I guess the answer could be <answer>!",
 ]
 
-
 class QueryEngine():
 
-    def __init__(self, graph):
+    def __init__(self, graph, entity_labels_path = "data/df_ent.pkl"):
         self.graph = graph
         self.embedding = GraphEmbedding(graph=self.graph)
+        self.entity_labels = pd.read_pickle(entity_labels_path)
 
     def answer_graph(self, query: str):
         entities = self.get_list_movies(query)
@@ -67,16 +66,36 @@ class QueryEngine():
         return "I'm sorry, I couldn't find the answer to your question. Can you plase rephrase it?"
         # ANSWER_TEMPLATE
 
-    def translate_res(self, res):
-        print(f"Translating: {res}")
-        if "entity/Q" in res:
-            ent_id = res.split('/')[-1].strip('>')
-            df = pd.read_pickle("data/df_ent.pkl")
-            lbl = df[df['uri'].str.contains(ent_id)].iloc[0]['label']
-            print(f"Translated: {lbl}")
-            return lbl
-        return res
+    # def translate_res(self, res):
+    #     print(f"Translating: {res}")
+    #     if "entity/Q" in res:
+    #         ent_id = res.split('/')[-1].strip('>')
+    #         df = pd.read_pickle("data/df_ent.pkl")
+    #         lbl = df[df['uri'].str.contains(ent_id)].iloc[0]['label']
+    #         print(f"Translated: {lbl}")
+    #         return lbl
+    #     return res
 
+    def translate_res(self, res):
+        print(f"Checking: {res}")
+        # Check if the response is a Wikidata URI or not
+        if "wikidata.org/entity/Q" in res:
+            # Use regex to find an exact Wikidata entity ID pattern
+            match = re.search(r'Q\d+', res)
+            if match:
+                ent_id = match.group(0)  # Get the full entity ID
+                # Filter the DataFrame for an exact match in the 'uri' column
+                label_row = self.entity_labels[self.entity_labels['uri'].str.endswith(ent_id)]
+
+                if not label_row.empty:
+                    lbl = label_row.iloc[0]['label']  # Get the label corresponding to the entity ID
+                    print(f"Translated: {lbl}")
+                    return lbl
+                else:
+                    return "UNKNOWN"  # Return 'UNKNOWN' if no matching ID found
+        # If the response does not need translation or is a direct answer
+        return res
+    
     def query(self, query: str, entities, relation, pid):
         print("Querying process started.")
         if len(entities) == 0 or pid is None:
@@ -104,11 +123,11 @@ class QueryEngine():
         return None
 
 
-    def get_list_movies(self, query: str):
-        # TODO: change interface here
-        print("List of movie names")
-        raise NotImplementedError
-        return movies
+    # def get_list_movies(self, query: str):
+    #     # TODO: change interface here
+    #     print("List of movie names")
+    #     raise NotImplementedError
+    #     return movies
 
     def get_relations(self, query, entities):
         rp = RelationProcessor(query, entities)

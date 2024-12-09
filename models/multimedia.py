@@ -18,8 +18,8 @@ class MultimediaModel:
         self.list_movie = self.df_movie['id'].values
 
 
-    def extract_name(self, query):
-        return ["Keanu Reeves", "The Matrix"] # TODO: implement this anywhere else
+    # def extract_name(self, query):
+    #     return ["The Matrix", "Keanu Reeves"] # TODO: implement this anywhere else
     
     def get_imbd_ids(self, entity_ids):
         ids = [ent['mapping']['uri'].split('/')[-1] for ent in entity_ids]

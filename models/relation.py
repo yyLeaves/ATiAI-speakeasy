@@ -1,6 +1,7 @@
 import re
 import pandas as pd
 pd.DataFrame.iteritems = pd.DataFrame.items # compatibility for pandas 2.*
+from difflib import get_close_matches
 
 from typing import Any, List
 
@@ -13,9 +14,9 @@ import torch.nn.functional as F
 
 from sklearn.metrics.pairwise import cosine_similarity
 
-from .data_config import EMBEDDING_MODEL
+# from .data_config import EMBEDDING_MODEL
 
-from .data_config import PAT_EXTRACT
+# from .data_config import PAT_EXTRACT
 
 
 class Text2VecEmbedding():
@@ -120,11 +121,94 @@ class RelationProcessor:
         return label, id
             
 
+from difflib import get_close_matches
+import pandas as pd
+
+from difflib import get_close_matches
+import pandas as pd
+
+
+class RelationMapper:
+    def __init__(self, pkl_path="data/df_rel_extend_embed.pkl"):
+        """
+        Initialize the RelationMapper with a DataFrame loaded from a .pkl file.
+        Args:
+            pkl_path (str): Path to the .pkl file containing relation mappings.
+        """
+        self.df_rel_extended_embed = pd.read_pickle(pkl_path)
+
+    def handle_exceptions(self, relation):
+        """
+        Handle specific relation-based exceptions with predefined mappings.
+        Args:
+            relation (str): The input relation.
+        Returns:
+            str: The predefined relation if matched, otherwise the input relation.
+        """
+        exceptions = {
+            "MPAA rating": "MPAA film rating",
+            "MPA rating": "MPAA film rating",
+            "production": "production company",
+        }
+        return exceptions.get(relation, relation)
+
+    def find_similar_relation(self, relation):
+        """
+        Find the most similar relation using fuzzy matching.
+        Args:
+            relation (str): The input relation.
+        Returns:
+            str: The most similar relation label, or the input relation if no match is found.
+        """
+        all_labels = self.df_rel_extended_embed['label'].tolist()
+        similar = get_close_matches(relation, all_labels, n=1, cutoff=0.8)
+        return similar[0] if similar else relation
+
+    def mapping(self, relation):
+        """
+        Map a relation to its corresponding ID and label.
+        Args:
+            relation (str): A single human-readable relation label to map.
+        Returns:
+            tuple: A tuple containing (label, id) for the relation found,
+                or (relation, None) if no match is found.
+        """
+        relation = self.handle_exceptions(relation)
+        res = self.df_rel_extended_embed[self.df_rel_extended_embed['label'].str.lower() == relation.lower()]
+
+        if res.empty:
+            relation = self.find_similar_relation(relation)
+            res = self.df_rel_extended_embed[self.df_rel_extended_embed['label'].str.lower() == relation.lower()]
+
+        if not res.empty:
+            id = res.iloc[0]['id']
+            label = res.iloc[0]['label']
+            return (label, id)
+        else:
+            return (relation, None)
+
+
+
+
 def main():
 
-    rp = RelationProcessor("Who directs Harry Potter?", [{'entity': 'Harry Potter', 'ent_start': 21, 'ent_end': 32, 'ent_type': 'TITLE', 'confidence': '0.96424997', 'mapping': {'uri': 'http://www.wikidata.org/entity/Q3244512', 'label': 'Harry Potter'}}])
-    rp.mapping("directs")
-    print(rp.pid)
+    # rp = RelationProcessor("Who directs Harry Potter?", [{'entity': 'Harry Potter', 'ent_start': 21, 'ent_end': 32, 'ent_type': 'TITLE', 'confidence': '0.96424997', 'mapping': {'uri': 'http://www.wikidata.org/entity/Q3244512', 'label': 'Harry Potter'}}])
+    # rp.mapping("directs")
+    # print(rp.pid)
+    # Initialize the RelationMapper with the .pkl file
+
+    relation_mapper = RelationMapper()
+
+    # Example relation input
+    relation = ['director'][0]
+
+    # Get the mapped relations
+    mapped_relations = relation_mapper.mapping(relation)
+    relation, id = mapped_relations
+    print(relation, id)
+    # # Print the results
+    # for label, pid in mapped_relations:
+    #     print(f"Relation: {label}, PID: {pid}")
 
 
 if __name__ == "__main__":

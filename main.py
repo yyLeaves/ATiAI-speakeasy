@@ -9,8 +9,15 @@ from models.recommender import RecommendEngine
 from models.intention import IntentionDetection
 from models.postprocess import MovieNameProcessor, EntityNameProcessor
 from models.graph import QueryEngine
+from models.crowdsourcing import CrowdsourcingProcessor
+from models.merge_answers import ResponseMerger
 from models.multimedia import MultimediaModel
-from models.relation import RelationProcessor
+from models.relation import RelationProcessor, RelationMapper
+from models.llama.llama_detector import LlamaProcessor  # Import your LlamaEntityProcessor here
+# from models.llama.relations_llama_movie import LlamaRelationProcessor  # Import your LlamaEntityProcessor here
+
+import torch
+from transformers import pipeline
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -25,6 +32,18 @@ DEFAULT_HOST_URL = 'https://speakeasy.ifi.uzh.ch'
 
 listen_freq = 2
 
+# Global Torch settings for deterministic behavior
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
+torch.use_deterministic_algorithms(True)
+torch.manual_seed(42)
+
+# Check for MPS availability and set the device accordingly
+device = "mps" if torch.backends.mps.is_available() else "cpu"
+print(f"Using device: {device}")
+
+# # Path to your downloaded Llama model
+# model_id = "./Llama-3.2-3B-Instruct"
 
 class Agent:
     def __init__(self, username, password):
@@ -35,13 +54,20 @@ class Agent:
         logger.info("Knowledge graph initialized.")
 
         self.int_det = IntentionDetection()
+
+        # Initialize the LlamaEntityProcessor using the preloaded pipeline
+        self.llama_processor = LlamaProcessor()  # Make sure to pass the preloaded pipeline
+        # self.llama_relation_processor = LlamaRelationProcessor(pipe)  # Make sure to pass the preloaded pipeline
         self.mnp = MovieNameProcessor()
         self.enp = EntityNameProcessor()
+
         self.recommender = RecommendEngine(graph=self.graph)
         self.mmm = MultimediaModel()
         
         self.query_engine = QueryEngine(graph=graph)
         self.embedding = GraphEmbedding(graph=graph)
+        self.crowdsourcing = CrowdsourcingProcessor()
+        self.responsemerger = ResponseMerger()
 
         logger.info("Agent initialized.")
         
@@ -68,7 +94,6 @@ class Agent:
                         f"\t- Chatroom {room.room_id} "
                         f"- new message #{message.ordinal}: '{message.message}' "
                         f"- {self.get_time()}")
-
                     try:
                         if message.message.strip() in self.history:
                             response = self.history[message.message.strip()]
@@ -82,14 +107,20 @@ class Agent:
                             if intention == 'recommend':
                                 logger.info(f"Detected intention: {intention}")
 
-                                movie_names = self.query_engine.get_list_movies(message.message) # list of movie names extracted using NER
+                                # movie_names = self.query_engine.get_entities(message.message) # list of movie names extracted using NER
+                                # movie_matches = self.mnp.process(movie_names)
+                                # movie_matches = [movie for movie in movie_matches if movie['mapping'] is not False]
+                                # logger.info(f"Extracted Movie Names: {movie_names}")
+                                
+                                # Use preloaded LlamaEntityProcessor to extract movie names
+                                movie_names = self.llama_processor.extract_entities(message.message)
                                 movie_matches = self.mnp.process(movie_names)
                                 movie_matches = [movie for movie in movie_matches if movie['mapping'] is not False]
                                 logger.info(f"Extracted Movie Names: {movie_names}")
                                 
                                 if len(movie_matches) == 0:
                                     # Actor name, director name, genre, etc.
-                                    alternative_entities = self.query_engine.get_entities(message.message) # TODO: implementation
+                                    alternative_entities = self.llama_processor.extract_entities(message.message) # NEW implemented
                                     ent_matches = self.enp.process(alternative_entities)
                                     ent_matches = [entity for entity in ent_matches if entity['mapping'] is not False]
                                     # TODO: if movies is empty, search for other entities and recommend based on it
@@ -130,7 +161,7 @@ class Agent:
 
                             elif intention == 'multimedia':
                                 logger.info(f"Detected intention: {intention}")
-                                ent_names = self.mmm.extract_name(message.message) # TODO: extract movie/actor name
+                                ent_names = self.llama_processor.extract_entities(message.message) # TODO: extract movie/actor name
                                 ent_matches = self.enp.process(ent_names)
                                 ent_matches = [entity for entity in ent_matches if entity['mapping'] is not False]
                                 logger.info(f"Entity Matches: {ent_names, ent_matches}")
@@ -146,26 +177,47 @@ class Agent:
                                 # TODO: implement 
                                 response = None
                                 query = message.message
-                                list_movies = self.query_engine.get_list_movies(query) # TODO: implement it anywhere
-                                list_movies = self.mnp.process(list_movies)
-                                rp = RelationProcessor(message.message, list_movies)
-                                relation, pid = rp.parse()
-                                logger.info(f"Relation: {relation}, PID: {pid}")
+                                entities = self.llama_processor.extract_entities(message.message) # TODO: implement it anywhere
+                                entities = self.mnp.process(entities)
+                                logger.info(f"Entities: {entities}")
+                                # rp = RelationProcessor(message.message, entities)
+                                relation_mapper = RelationMapper()
+                                # logger.info(f"RP_new: {rp}")
+                                relation_llama = self.llama_processor.extract_relations(message.message)
+                                # logger.info(f"RP_new: {rp1}")
+                                # relation, pid = rp.parse()
+                                if relation_llama:
+                                    relation, pid = relation_mapper.mapping(relation_llama[0])
+                                else:
+                                    print("No valid relation extracted")
+                                    relation, pid = None, None
+                                # logger.info(f"Relation: {relation}, PID: {pid}")
                                 if (relation is not None) and (pid is not None):
-                                    results = self.query_engine.query(query, list_movies, relation, pid)
-                                    results = [self.query_engine.translate_res(res) for res in results]
-                                    response = self.query_engine._format_answer(results)
+                                    # print("HERE ARE ENTITIES:")
+                                    # print(entities)
+                                    results = self.query_engine.query(query, entities, relation, pid)
+                                    # logger.info(f"Results:, {results}")
+                                    graph_results = [self.query_engine.translate_res(res) for res in results]
+                                    # logger.info(f"Results 1 2 3:, {results}")
+                                    graph_response = self.query_engine._format_answer(graph_results)
+                                    print("GRAPH ANSWER:", graph_response)
+                                    # crowd_response = self.crowdsourcing.generate_answer(graph_results, entities, pid)
+                                    crowd_response = self.crowdsourcing.generate_answer(graph_results, entities, pid)
+                                    print("CROWD ANSWER:", crowd_response)
+
+
+                                    response = self.responsemerger.merge_responses(graph_response, crowd_response)
+
+                                    # logger.info(f"{response}")
+                                    # if response is None:
+                                    #     print("We did not manage to find the answer directly in the graph. Let's see what crowdsourcing says!")
 
                                 if response is None:
-                                    print("Crowdsourcing mot implemented yet.")
-                                    raise NotImplementedError
-
-                                if response is None:
-                                    if len(list_movies) == 0 and pid is None:
+                                    if len(entities) == 0 and pid is None:
                                         response = "I'm sorry, I couldn't find the answer to your question. Can you please rephrase it?"
                                     else:
                                         logger.info("Trying to answer with embeddings.")
-                                        top_match = self.embedding.retrieve(list_movies, relation)
+                                        top_match = self.embedding.retrieve(entities, relation)
                                         print(f"Top match: {top_match}")
                                     if top_match:
                                         if len(top_match) > 1:
@@ -173,7 +225,7 @@ class Agent:
                                         else:
                                             results = top_match
                                     results = [self.query_engine.translate_res(res) for res in results]
-                                    response = self.query_engine._format_answer(results)
+                                    response = self.query_engine._format_answer(results, embedding=True)
 
                                     print("Embeddings...")
                                 """Try to answer in the order of
